@@ -1,0 +1,6 @@
+Files in this directory:
+
+* checkPixels.C: C++ code doing the real analysis
+* scanVset.py: For basical configuration. Calling checkPixels.C
+* scan1.sh: Call scanVset.py to scan multiple files. It's needed becasue of the large RAM consumption due to unknown reason if a lot of files are processed in a single job 
+* showMore.py: Make plots
