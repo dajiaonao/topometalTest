@@ -14,21 +14,21 @@
 int main(int argc, char **argv){
 //   int pedeSet = atol(argv[1]);
 //   int dataSet = atol(argv[2]);
-  int pedeSet = 8;
-  int dataSet = 1;
+  int pedeSet = 22;
+  int dataSet = 386;
 
   //// setup pede
   pd1Pede pede;
   if(pedeSet>=0){
     char pedeFn[200];
-    sprintf(pedeFn,"../data/pedeData/pede%d.txt",pedeSet);
+    sprintf(pedeFn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/pede%d.txt",pedeSet);
     pede.setup(pedeFn);
    }
 
   /// setup data
   placData_1 pd1;
   char fn[200];
-  sprintf(fn,"../data/out%d.pd1",dataSet);
+  sprintf(fn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/out%d.pd1",dataSet);
   pd1.read(fn);
   pd1.print();
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv){
 
 //   pt.draw2DFrames(748, 756);
 //   pt.setup2DMinMax(-4,10);
-  int fm1 = 748;
+  int fm1 = 510;
   int fm2 = 755;
   int nC = pt.nCol*pt.nRow;
   for(int ic=0; ic<nC; ic++){
