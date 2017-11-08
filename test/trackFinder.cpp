@@ -6,26 +6,9 @@
 #include <TError.h>
 #include <TVector3.h>
 #include "rootlibX.h"
+#include "Objects.h"
 
 using namespace std;
-
-struct Hit{
-  int pID;
-  float t; /// time
-  float A; /// amplitude
-  float width;
-  vector< int > decay; /// <counts> -- frame can be given else where
-};
-
-struct ROI{
-  int frame;
-  vector< Hit* > hits; /// a list of hists
-};
-
-struct Track{
-  TVector3 p3;
-  map< float, ROI > Rois; /// a list of ROIs <time, ROI>
-};
 
 class trackFinder{
  public:
@@ -101,24 +84,13 @@ class trackFinder{
     short* ps = (short*)pd1.p;
     for(int i=0; i<nData; i++) {
       data[i] = ps[i] - meanPed[i%NPIX];
-//       cout << "id=" << i%NPIX << " frame=" << i/NPIX <<  " data=" << data[i] << " ps=" << ps[i] << " mean=" << meanPed[i%NPIX] << endl;
      }
-
-    /// check frame 169
-//     pd1.getFrame(169, 0);
-//     for(int i=0; i<72*72; i++){
-//       pd1.frameDat[i] -= meanPed[8*i];
-//       cout << "ttt==> i=" << i << " (x=" << i%72 << ",y=" << i/72 << ") c=" << pd1.frameDat[i] << " data=" << data[169*NPIX+i*8] << endl; 
-//      }
-
 
     /// start operating on data vector
     /// -- loop over pixels to find the hits
     const size_t NFRAME = pd1.nFrame();
     vector< ROI* > ROIs(NFRAME, nullptr);
     for(int pid=0; pid<NPIX; pid++){
-//       if(pid%8!=0) continue; /// FIXME: here we only process adc==0. Need to update
-
       /// the data indices are: iFrame*NPIX+pid
       for(int iframe=0; iframe<NFRAME; iframe++){
         short c = data[iframe*NPIX+pid];
@@ -128,14 +100,12 @@ class trackFinder{
         if(iframe<NFRAME-1 && data[(iframe+1)*NPIX+pid]/rmsPed[pid]<ZnCut2) continue; /// the next one should also be significantly high
         if(iframe<NFRAME-2 && data[(iframe+2)*NPIX+pid]/rmsPed[pid]<ZnCut3) continue; /// the next one should also be significantly high
 
-//         cout << "pid=" << pid << "(adc=" << pid%8 << ", x=" << (pid%8)%72 << ", y=" << (pid%8)/72 <<  ") frame=" << iframe << " count=" << c << " and Zn=" << c/rmsPed[pid] << endl;
         ROI* roi = ROIs[iframe];
         if(!roi){
           roi = new ROI();
           ROIs[iframe] = roi;
           roi->frame = iframe;
          }
-//         cout << "adding ROI" << endl;
 
         Hit* h1 = new Hit();
         roi->hits.push_back(h1);
@@ -182,7 +152,24 @@ class trackFinder{
        }
      }
 
-    /// merge ROI in frames to form tracks -- not needed
+    //// save them
+    TFile* f1 = new TFile("foutA1.root","recreate");
+    TTree* tree1 = new TTree("physics", "physics data");
+
+    vector< ROI >* tm_ROI = new vector< ROI >();
+    tree1->Branch("RoIs", "std::vector< ROI >", &tm_ROI);
+
+    for(int i=0; i<ROIs.size(); i++){
+      ROI* roi = ROIs[i];
+      if(!roi) continue; /// skip frames that does not have any interesting pixels
+
+      tm_ROI->clear();
+      splitROI(roi, tm_ROI);
+
+      tree1->Fill();
+     }
+    f1->Write();
+   
 
     return;
   }
@@ -205,6 +192,30 @@ class trackFinder{
 
     return;
    }
+
+  void splitROI(ROI* big_roi, vector< ROI >* out){
+    /// split the big_roi to small ones are ave in _out
+    vector< Hit* >& hits_o = big_roi->hits;
+
+    while(true){
+      /// first find the seed
+      int seed(-1);
+      float maxC(-1);
+      for(int j=0; j<hits_o.size(); j++){if(hits_o[j] && hits_o[j]->A > maxC){seed=j; maxC=hits_o[j]->A;}}
+      if(seed<0) break;
+
+      cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
+      ROI roi_t;
+      roi_t.frame = big_roi->frame;
+
+      /// collect the nearby hits
+      moveHits(roi_t.hits, seed, hits_o);
+      out->push_back(roi_t);
+     }
+
+    return;
+   }
+
 
   vector< ROI* >* splitROI( ROI* big_roi){
     /// if it's not empty
