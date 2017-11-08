@@ -136,21 +136,21 @@ class trackFinder{
      }
 
     //// merge & split ROI in each frame
-    vector< vector< ROI* >* > roiV(NFRAME, nullptr); /// each frame has a vector
+//     vector< vector< ROI* >* > roiV(NFRAME, nullptr); /// each frame has a vector
 
     /// for each frame, merge the pixels to form a real ROI
-    for(int i=0; i<ROIs.size(); i++){
-      ROI* roi = ROIs[i];
-      if(!roi) continue; /// skip frames that does not have any interesting pixels
-
-      roiV[i] = splitROI(roi);
-
-      Info("process", "check splitted ROIs in frame %d", i);
-      for(int j=0; j<roiV[i]->size(); j++){
-        Info("process", "check splitted ROI %d", j);
-        Info("process", "%d hits found", roiV[i]->at(j)->hits.size());
-       }
-     }
+//     for(int i=0; i<ROIs.size(); i++){
+//       ROI* roi = ROIs[i];
+//       if(!roi) continue; /// skip frames that does not have any interesting pixels
+// 
+//       roiV[i] = splitROI(roi);
+// 
+//       Info("process", "check splitted ROIs in frame %d", i);
+//       for(int j=0; j<roiV[i]->size(); j++){
+//         Info("process", "check splitted ROI %d", j);
+//         Info("process", "%d hits found", roiV[i]->at(j)->hits.size());
+//        }
+//      }
 
     //// save them
     TFile* f1 = new TFile("foutA1.root","recreate");
@@ -165,6 +165,7 @@ class trackFinder{
 
       tm_ROI->clear();
       splitROI(roi, tm_ROI);
+      cout << i << " - write out vector size: " << tm_ROI->size() << endl;
 
       tree1->Fill();
      }
@@ -212,6 +213,7 @@ class trackFinder{
       moveHits(roi_t.hits, seed, hits_o);
       out->push_back(roi_t);
      }
+    cout << "here: out size = " << out->size() << endl;
 
     return;
    }
