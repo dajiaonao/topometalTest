@@ -1,7 +1,7 @@
 
 ROOTLIBS := $(shell root-config --glibs)
 ROOTFLAG := $(shell root-config --cflags)
-CXXFLAG := -I/home/dzhang/work/topmetal2M/TM1_8 $(ROOTFLAG)
+CXXFLAG := -I/data/repos/xRayPol/TM1_8 $(ROOTFLAG)
 
 test: run_recoTest.exe
 	./run_recoTest.exe	
