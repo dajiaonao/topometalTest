@@ -293,6 +293,20 @@ void trackFinder::process(){
      }
    }
 
+  vector< ROI >* tm_ROI = new vector< ROI >();
+  for(int i=0; i<ROIs.size(); i++){
+    ROI* roi = ROIs[i];
+    if(!roi) continue; /// skip frames that does not have any interesting pixels
+    if(roi->hits.size()<10) continue;
+
+    tm_ROI->clear();
+    splitROI(roi, tm_ROI);
+
+    drawFrames(roi->frame, 6, 10);
+   }
+
+  bool saveRoot = false;
+  if(saveRoot){
   //// save them
   TFile* f1 = new TFile("foutA1.root","recreate");
   TTree* tree1 = new TTree("physics", "physics data");
@@ -311,7 +325,7 @@ void trackFinder::process(){
     tree1->Fill();
    }
   f1->Write();
- 
+  }
 
   return;
 }
@@ -396,9 +410,7 @@ vector< ROI* >* trackFinder::splitROI( ROI* big_roi){
   return newV;
 }
 
-TPad* trackFinder::drawFrames(int fstart, int fN, int mode){
-  TPad* pad = new TPad();
-
+void trackFinder::drawFrames(int fstart, int fN, int mode){
   //// setup pede
   pd1Pede pede;
   pede.setup(CF_inBkg);
@@ -414,11 +426,16 @@ TPad* trackFinder::drawFrames(int fstart, int fN, int mode){
 
   /// setup plots
   plot pt;
-  pt.setupCanvas(nRow,nCol,1200,600); //设置canvas上图片的行数，列数
+  if(!m_tpad){
+    m_tpad = new TPad();
+    pt.setupCanvas(nRow,nCol,1200,600); //设置canvas上图片的行数，列数
+   }
   pt.setup2D(nRow,nCol,72,72,"hist2d"); //Tcanvas中的图的行数，列数，阵列的行数，列数，图的名字
 
-  init_keyboard();
   int ch=0;
+  if(mode>=10){
+    init_keyboard();
+   }
   int adc(0);
 
   for(int ic=0; ic<fN; ic++){
@@ -432,10 +449,11 @@ TPad* trackFinder::drawFrames(int fstart, int fN, int mode){
     pt.h2[ic]->SetTitle(str);
    }
   pt.draw2D();
-//   pt.c->SaveAs("signal_example.eps");
-//   pt.c->SaveAs("signal_example.png");
-//   ch=readch();
+  pt.c->SaveAs("signal_example.eps");
+  pt.c->SaveAs("signal_example.png");
 
-  return pad;
+  if(mode>=10) ch=readch();
+
+  return;
 }
 

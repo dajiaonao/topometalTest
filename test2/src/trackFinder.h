@@ -47,7 +47,7 @@ class trackFinder:public TObject{
   void splitROI(ROI* big_roi, vector< ROI >* out);
   vector< ROI* >* splitROI( ROI* big_roi);
   void saveFrame(){};
-  TPad* drawFrames(int fstart, int fN, int mode=1);
+  void drawFrames(int fstart, int fN, int mode=1);
 
   std::string CF_inBkg = "/data/Samples/xRayPol/topmetal1202/pede27.txt";
   std::string CF_inData = "/data/Samples/xRayPol/20171107/out136.pd1";
@@ -56,6 +56,7 @@ class trackFinder:public TObject{
 //   std::string CF_inBkg;
   float* meanPed;
   float* rmsPed;
+  TPad* m_tpad=nullptr;
 
   ClassDef(trackFinder, 1)
 };
