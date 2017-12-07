@@ -6,7 +6,7 @@ CXX:=gcc -g
 LD:=g++
 
 OBJ=simpleTest.o trackFinder.o 
-HEADS=simpleTest.h trackFinder.h
+HEADS=simpleTest.h trackFinder.h Objects.h
 
 lib: libTest.so
 
@@ -19,7 +19,7 @@ main: main.exe
 libTest.so: $(OBJ) testDict.o
 	$(LD) $(ROOTLIBS) $^ -shared -o $@
 
-%.o: %.cpp
+%.o: %.cpp Objects.h
 	$(CXX) -fPIC $(CXXFLAGS) -c $< -o $@
 
 %Dict.cpp: $(HEADS) Linkdef.h

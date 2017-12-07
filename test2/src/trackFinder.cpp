@@ -7,6 +7,8 @@
 #include <TPad.h>
 #include <TVector3.h>
 #include <TObject.h>
+#include <TPad.h>
+#include <TStyle.h>
 #include "rootlibX.h"
 #include "trackFinder.h"
 
@@ -18,15 +20,11 @@ void trackFinder::test(){
   Info("trackFinder", "testing %s", "trackFinder");
  }
 
-float trackFinder::distance(Hit* h1, Hit* h2){
-  if(!h1 || !h2){
-    Error("distance","h1 or h2 is null....");
-    return 999;
-   }
-  int adc1 = h1->pID % 8;
-  int adc2 = h2->pID % 8;
-  int dx = (h1->pID/8)%72-(h2->pID/8)%72;
-  int dy = (h1->pID/8)/72-(h2->pID/8)/72;
+float trackFinder::distance(Hit& h1, Hit& h2){
+  int adc1 = h1.pID % 8;
+  int adc2 = h2.pID % 8;
+  int dx = (h1.pID/8)%72-(h2.pID/8)%72;
+  int dy = (h1.pID/8)/72-(h2.pID/8)/72;
 
   if (adc1!=adc2) return 999;
 
@@ -218,21 +216,22 @@ void trackFinder::process(){
         roi->frame = iframe;
        }
 
-      Hit* h1 = new Hit();
-      roi->hits.push_back(h1);
+      if(!roi->hits) roi->hits = new vector< Hit >();
+      roi->hits->emplace_back();
+      auto& h1 = roi->hits->back();
 
       //// now let's get the info of hits
       for(int jframe=iframe; jframe<NFRAME; jframe++){
         short cj = data[jframe*NPIX+pid];
-        h1->decay.push_back(cj); 
+        h1.decay.push_back(cj); 
         if(cj<0.1*c) break;
        }
 
-      h1->pID = pid;
+      h1.pID = pid;
       /// to be improved
-      h1->A = c;
-      h1->t = iframe;
-      h1->width = h1->decay.size();
+      h1.A = c;
+      h1.t = iframe;
+      h1.width = h1.decay.size();
      }
    }
 
@@ -242,7 +241,7 @@ void trackFinder::process(){
     ROI* roi = ROIs[i];
     if(!roi) continue;
 
-    cout << i << " frame=" << roi->frame << " size=" << roi->hits.size() << endl;
+    cout << i << " frame=" << roi->frame << " size=" << roi->hits->size() << endl;
 //     for(int i=0; i<roi->hits.size(); i++) cout << "  ==> " << i << " A" << roi->hits[i]->A << " " << roi->hits[i]->pID << " width=" << roi->hits[i]->width << endl;
    }
 
@@ -263,152 +262,294 @@ void trackFinder::process(){
 //        }
 //      }
 
-  /// merge ROIs -- if the leading edge appear in two frames
-  for(int i=0; i<ROIs.size()-1; i++){
+  vector< ROI >* tm_ROIs = new vector< ROI >();
+  vector< Hit >* tm_Hits(nullptr);
+  bool saveRoot = false;
+  TFile* f1(nullptr);
+  TTree* tree1(nullptr);
+
+  //// save them
+  if(saveRoot){
+    f1 = new TFile("foutA1.root","recreate");
+    tree1 = new TTree("physics", "physics data");
+    tree1->Branch("RoIs", "std::vector< ROI >", &tm_ROIs);
+    tree1->Branch("Hits", "std::vector< Hit >", &tm_Hits);
+   }
+
+  //// let's do things frame by frame now
+  for(int i=0; i<ROIs.size(); i++){
     ROI* roi = ROIs[i];
     if(!roi) continue;
 
-    ROI* roiN = ROIs[i+1];
-    if(!roiN) continue;
+    /// merge with next frame if applicable
+    if(i<ROIs.size()-1 && ROIs[i+1]){
+      ROI* roiN = ROIs[i+1];
 
-    roi->status = 0;
-    /// the closest distance is 1
+      int nClose = 0;
+      for(auto& jh: *(roi->hits)){
+        for(auto& kh: *(roiN->hits)){
+          if(jh.pID<0 || kh.pID<0) continue;
+          if(distance(jh, kh)<1.5) nClose++;
+         }
+       }
 
-    int nClose = 0;
-    for(size_t j=0; j<roi->hits.size(); j++){
-      for(size_t k=0; k<roiN->hits.size(); k++){
-        if(roi->hits[j] && roiN->hits[k] && distance(roi->hits[j], roiN->hits[k])<1.5) nClose++;
+      ///merge the two if more than 5 hits are close -- further will need to ask them to be in same column?
+      if(nClose>5){
+        moveHits(roi->hits, roiN->hits);
+        roi->status = 1;
+
+        Info("merging frames", "frame %d with nClose=%d", roi->frame, nClose);
+
+        delete roiN;
+        ROIs[i+1] = nullptr;
        }
      }
 
-    ///merge the two if more than 5 hits are close -- further will need to ask them to be in same column?
-    if(nClose>5){
-      moveHits(roi->hits, roiN->hits);
-      roi->status = 1;
+    /// skip frames that is not interesting
+    if(roi->hits->size()<10) continue;
 
-      Info("merging frames", "frame %d with nClose=%d", roi->frame, nClose);
-      
-      delete roiN;
-      ROIs[i+1] = nullptr;
+    tm_Hits = roi->hits;
+
+    tm_ROIs->clear();
+    splitROI(roi, tm_ROIs);
+
+    for(auto t: *tm_ROIs){
+      checkEdgeROI(&t);
+      cout << t.status << " " << t.m_hitsI.size() << endl;
+      drawROI(&t);
      }
    }
 
-  vector< ROI >* tm_ROI = new vector< ROI >();
-  for(int i=0; i<ROIs.size(); i++){
-    ROI* roi = ROIs[i];
-    if(!roi) continue; /// skip frames that does not have any interesting pixels
-    if(roi->hits.size()<10) continue;
+//   /// merge ROIs -- if the leading edge appear in two frames
+//   for(int i=0; i<ROIs.size()-1; i++){
+//     ROI* roi = ROIs[i];
+//     if(!roi) continue;
+// 
+//     ROI* roiN = ROIs[i+1];
+//     if(!roiN) continue;
+// 
+//     roi->status = 0;
+//     /// the closest distance is 1
+// 
+//     int nClose = 0;
+//     for(size_t j=0; j<roi->hits.size(); j++){
+//       for(size_t k=0; k<roiN->hits.size(); k++){
+//         if(roi->hits[j] && roiN->hits[k] && distance(roi->hits[j], roiN->hits[k])<1.5) nClose++;
+//        }
+//      }
+// 
+//     ///merge the two if more than 5 hits are close -- further will need to ask them to be in same column?
+//     if(nClose>5){
+//       moveHits(roi->hits, roiN->hits);
+//       roi->status = 1;
+// 
+//       Info("merging frames", "frame %d with nClose=%d", roi->frame, nClose);
+//       
+//       delete roiN;
+//       ROIs[i+1] = nullptr;
+//      }
+//    }
 
-    tm_ROI->clear();
-    splitROI(roi, tm_ROI);
-
-    drawFrames(roi->frame, 6, 10);
-   }
-
-  bool saveRoot = false;
-  if(saveRoot){
-  //// save them
-  TFile* f1 = new TFile("foutA1.root","recreate");
-  TTree* tree1 = new TTree("physics", "physics data");
-
-  vector< ROI >* tm_ROI = new vector< ROI >();
-  tree1->Branch("RoIs", "std::vector< ROI >", &tm_ROI);
-
-  for(int i=0; i<ROIs.size(); i++){
-    ROI* roi = ROIs[i];
-    if(!roi) continue; /// skip frames that does not have any interesting pixels
-
-    tm_ROI->clear();
-    splitROI(roi, tm_ROI);
-//     cout << i << " - write out vector size: " << tm_ROI->size() << endl;
-
-    tree1->Fill();
-   }
-  f1->Write();
-  }
+//   vector< ROI >* tm_ROI = new vector< ROI >();
+//   for(int i=0; i<ROIs.size(); i++){
+//     ROI* roi = ROIs[i];
+//     if(!roi) continue; /// skip frames that does not have any interesting pixels
+//     if(roi->hits.size()<10) continue;
+// 
+//     tm_ROI->clear();
+//     splitROI(roi, tm_ROI);
+// 
+//     for(auto t: *tm_ROI){
+//       cout << t.hits.size() << endl;
+//       checkEdgeROI(&t);
+//       drawROI(&t);
+//      }
+// //     drawFrames(roi->frame, 6, 10);
+// 
+//    }
+// 
+//   bool saveRoot = false;
+//   if(saveRoot){
+//   //// save them
+//   TFile* f1 = new TFile("foutA1.root","recreate");
+//   TTree* tree1 = new TTree("physics", "physics data");
+// 
+//   vector< ROI >* tm_ROI = new vector< ROI >();
+//   tree1->Branch("RoIs", "std::vector< ROI >", &tm_ROI);
+// 
+//   for(int i=0; i<ROIs.size(); i++){
+//     ROI* roi = ROIs[i];
+//     if(!roi) continue; /// skip frames that does not have any interesting pixels
+// 
+//     tm_ROI->clear();
+//     splitROI(roi, tm_ROI);
+// //     cout << i << " - write out vector size: " << tm_ROI->size() << endl;
+// 
+//     tree1->Fill();
+//    }
+//   f1->Write();
+//   }
 
   return;
 }
 
-void trackFinder::moveHits(vector< Hit* >& des, vector< Hit* >& source){
+void trackFinder::moveHits(vector< Hit >* des, vector< Hit >* source){
   /// move all hits in source to des
-  for(int i=0; i<source.size(); i++){
-    if(!source[i]) continue;
-    des.push_back(source[i]);
-    source[i] = nullptr;
-   }
+  des->reserve(des->size() + source->size());
+  des->insert(des->end(), source->begin(), source->end());
+  source = nullptr;
 
   return;
 }
 
+// void trackFinder::moveHits(vector< Hit* >& des, vector< Hit* >& source){
+//   /// move all hits in source to des
+//   for(int i=0; i<source.size(); i++){
+//     if(!source[i]) continue;
+//     des.push_back(source[i]);
+//     source[i] = nullptr;
+//    }
+// 
+//   return;
+// }
 
-void trackFinder::moveHits(vector< Hit* >& des, int is, vector< Hit* >& source){
-  /// move the neibours of i in source to des
-  Hit* temp = source[is];
-  if(!temp){
-    Error("moveHits","seed is None?");
-   }
-  des.push_back(temp);
-  source[is] = nullptr;
+void trackFinder::moveHits(ROI* des, int is, ROI* source){
+  des->m_hitsI.push_back(is);
+  source->m_hitsI[is] = -1;
 
-  for(int i=0; i<source.size(); i++){
-    if(!source[i]) continue;
-    if(distance(source[i], temp)>1.1) continue;
-//     Info("moveHits","moving to next: %d", i);
+  int nHits = source->m_hitsI.size();
+  for(int i=0; i<nHits; i++){
+    if(source->m_hitsI[i]<0) continue;
+    if(distance((*(source->hits))[i], (*(source->hits))[is])>2.5) continue;
+
     moveHits(des, i, source);
    }
 
   return;
 }
 
+// void trackFinder::moveHits(vector< Hit >& des, int is, vector< Hit >& source){
+//   /// move the neibours of i in source to des
+//   Hit* temp = source[is];
+//   if(!temp){
+//     Error("moveHits","seed is None?");
+//    }
+//   des.push_back(temp);
+//   source[is] = nullptr;
+// 
+//   for(int i=0; i<source.size(); i++){
+//     if(!source[i]) continue;
+//     if(distance(source[i], temp)>1.1) continue;
+// //     Info("moveHits","moving to next: %d", i);
+//     moveHits(des, i, source);
+//    }
+// 
+//   return;
+// }
+
 void trackFinder::splitROI(ROI* big_roi, vector< ROI >* out){
   /// split the big_roi to small ones are ave in _out
-  vector< Hit* >& hits_o = big_roi->hits;
+  vector< Hit >& hits_o = *(big_roi->hits);
+
+  /// incase it's not initilizated
+  if(big_roi->m_hitsI.size()==0) big_roi->m_hitsI.assign(big_roi->hits->size(),0);
 
   while(true){
     /// first find the seed
     int seed(-1);
     float maxC(-1);
-    for(int j=0; j<hits_o.size(); j++){if(hits_o[j] && hits_o[j]->A > maxC){seed=j; maxC=hits_o[j]->A;}}
+    for(int j=0; j<hits_o.size(); j++){if(big_roi->m_hitsI[j]>=0 && hits_o[j].A > maxC){seed=j; maxC=hits_o[j].A;}}
     if(seed<0) break;
 
-//     cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
-    ROI roi_t;
+    cout << "seed " << seed << " A=" << hits_o[seed].A << endl;
+    out->emplace_back();
+    auto& roi_t = out->back();
+
     roi_t.frame = big_roi->frame;
+    roi_t.status = big_roi->status;
+    roi_t.hits = big_roi->hits;
 
     /// collect the nearby hits
-    moveHits(roi_t.hits, seed, hits_o);
-    out->push_back(roi_t);
+    moveHits(&roi_t, seed, big_roi);
    }
-//   cout << "here: out size = " << out->size() << endl;
+  cout << "here: out size = " << out->size() << endl;
 
   return;
 }
 
 
-vector< ROI* >* trackFinder::splitROI( ROI* big_roi){
-  /// if it's not empty
-  vector< ROI* >* newV = new vector< ROI* >();
-  vector< Hit* >& hits_o = big_roi->hits;
+// vector< ROI* >* trackFinder::splitROI( ROI* big_roi){
+//   /// if it's not empty
+//   vector< ROI* >* newV = new vector< ROI* >();
+//   vector< Hit* >& hits_o = big_roi->hits;
+// 
+//   while(true){
+//     /// first find the seed
+//     int seed(-1);
+//     float maxC(-1);
+//     for(int j=0; j<hits_o.size(); j++){if(hits_o[j] && hits_o[j]->A > maxC){seed=j; maxC=hits_o[j]->A;}}
+//     if(seed<0) break;
+// 
+//     cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
+//     ROI* roi_t = new ROI();
+//     roi_t->frame = big_roi->frame;
+// 
+//     /// collect the nearby hits
+//     moveHits(roi_t->hits, seed, hits_o);
+//     newV->push_back(roi_t);
+//    }
+// 
+//   return newV;
+// }
 
-  while(true){
-    /// first find the seed
-    int seed(-1);
-    float maxC(-1);
-    for(int j=0; j<hits_o.size(); j++){if(hits_o[j] && hits_o[j]->A > maxC){seed=j; maxC=hits_o[j]->A;}}
-    if(seed<0) break;
+void trackFinder::drawROI(const ROI* r) const
+{
+  TH2F* h2 = new TH2F("h2","h2",72,0,72,72,0,72);
+  int ch=0;
+  init_keyboard();
 
-    cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
-    ROI* roi_t = new ROI();
-    roi_t->frame = big_roi->frame;
+  cout << "ttt " << r->hits->size() << endl;
+  for(auto i: r->m_hitsI){
+    auto& h = (*(r->hits))[i];
 
-    /// collect the nearby hits
-    moveHits(roi_t->hits, seed, hits_o);
-    newV->push_back(roi_t);
+    int adc1 = h.pID % 8;
+    int t = h.pID/8;
+    h2->Fill(t%72, t/72, h.A);
+    cout << t%72 << " " << t/72 << " " << h.A << endl;
    }
 
-  return newV;
+  h2->SetFillColor(4);
+  h2->Draw("box");
+  gStyle->SetOptStat(0);
+
+  m_lt->DrawLatexNDC(0.2, 0.94, TString::Format("frame %d, status %d", r->frame, r->status));
+
+  gPad->Update();
+
+  ch=readch();
+
+  return;
 }
+
+void trackFinder::checkEdgeROI(ROI* r) const
+{
+  int nEdge = 0;
+  for(auto i: r->m_hitsI){
+    auto& h = (*(r->hits))[i];
+
+    int adc1 = h.pID%8;
+    int t = h.pID/8;
+    int x=t%72;
+    int y=t/72;
+    if(x<2 || x>70 || y<2 || y>70) nEdge++;
+   }
+  if(nEdge>2) r->status = 2;
+
+  cout << nEdge << endl;
+
+  return;
+}
+
 
 void trackFinder::drawFrames(int fstart, int fN, int mode){
   //// setup pede

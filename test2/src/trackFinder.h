@@ -9,6 +9,7 @@
 #include <TError.h>
 #include <TVector3.h>
 #include <TObject.h>
+#include <TLatex.h>
 #include "Objects.h"
 // #include "rootlibX.h"
 
@@ -34,17 +35,23 @@ class TPad;
 
 class trackFinder:public TObject{
  public:
-  trackFinder():meanPed(nullptr),rmsPed(nullptr){};
+  trackFinder():meanPed(nullptr),rmsPed(nullptr){
+    m_lt = new TLatex();
+   };
 
   void test();
-  float distance(Hit* h1, Hit* h2);
+  float distance(Hit& h1, Hit& h2);
   void setupBkg(placData_1* pd1);
   void findHits(){};
   void process0(){};
   void process();
-  void moveHits(vector< Hit* >& des, vector< Hit* >& source);
-  void moveHits(vector< Hit* >& des, int is, vector< Hit* >& source);
+//   void moveHits(vector< Hit* >& des, vector< Hit* >& source);
+//   void moveHits(vector< Hit* >& des, int is, vector< Hit* >& source);
+  void moveHits(ROI* des, int is, ROI* source);
+  void moveHits(vector< Hit >* des, vector< Hit >* source);
   void splitROI(ROI* big_roi, vector< ROI >* out);
+  void drawROI(const ROI* r) const;
+  void checkEdgeROI(ROI* r) const;
   vector< ROI* >* splitROI( ROI* big_roi);
   void saveFrame(){};
   void drawFrames(int fstart, int fN, int mode=1);
@@ -57,6 +64,7 @@ class trackFinder:public TObject{
   float* meanPed;
   float* rmsPed;
   TPad* m_tpad=nullptr;
+  TLatex* m_lt=nullptr;
 
   ClassDef(trackFinder, 1)
 };
