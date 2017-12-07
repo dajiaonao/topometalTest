@@ -16,7 +16,7 @@ int main(int argc, char **argv){
 //   int pedeSet = atol(argv[1]);
 //   int dataSet = atol(argv[2]);
   int pedeSet = 27;
-  int dataSet = 8;
+  int dataSet = 136;
 
   //// setup pede
   pd1Pede pede;
@@ -31,7 +31,7 @@ int main(int argc, char **argv){
   placData_1 pd1;
   char fn[200];
 //   sprintf(fn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/out%d.pd1",dataSet);
-  sprintf(fn,"/data/Samples/xRayPol/topmetal1202/out%d.pd1",dataSet);
+  sprintf(fn,"/data/Samples/xRayPol/20171107/out%d.pd1",dataSet);
   pd1.read(fn);
   pd1.print();
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv){
 
 //   pt.draw2DFrames(748, 756);
 //   pt.setup2DMinMax(-4,10);
-  int fm1 = 608;
+  int fm1 = 170;
   int fm2 = -1;
   int nC = pt.nCol*pt.nRow;
   for(int ic=0; ic<nC; ic++){

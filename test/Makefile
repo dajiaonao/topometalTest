@@ -12,6 +12,8 @@ run_get_width.exe: get_width.cpp
 
 run_%.exe: %.cpp
 	g++ -o $@ $^ $(CXXFLAG) $(ROOTLIBS)
+lib: recoTest.cpp
+	g++ -fPIC $^ $(CXXFLAG) $(ROOTLIBS) -shared -o libRecoTest.so
 
 clean:
 	rm run_*.exe
