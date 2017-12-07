@@ -25,6 +25,7 @@ class ROI: public TObject{
   ~ROI(){};
 
   int frame;
+  int status;
   vector< Hit* > hits; //! /// a list of hists
 
   vector< int > m_hitsI;

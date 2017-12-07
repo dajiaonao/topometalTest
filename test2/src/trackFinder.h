@@ -13,7 +13,7 @@
 // #include "rootlibX.h"
 
 class placData_1;
-
+class TPad;
 // struct Hit{
 //   int pID;
 //   float t; /// time
@@ -42,10 +42,12 @@ class trackFinder:public TObject{
   void findHits(){};
   void process0(){};
   void process();
+  void moveHits(vector< Hit* >& des, vector< Hit* >& source);
   void moveHits(vector< Hit* >& des, int is, vector< Hit* >& source);
   void splitROI(ROI* big_roi, vector< ROI >* out);
   vector< ROI* >* splitROI( ROI* big_roi);
   void saveFrame(){};
+  TPad* drawFrames(int fstart, int fN, int mode=1);
 
   std::string CF_inBkg = "/data/Samples/xRayPol/topmetal1202/pede27.txt";
   std::string CF_inData = "/data/Samples/xRayPol/20171107/out136.pd1";

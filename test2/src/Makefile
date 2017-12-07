@@ -2,8 +2,8 @@ ROOTLIBS := $(shell root-config --glibs)
 ROOTFLAG := $(shell root-config --cflags)
 CXXFLAGS := -I/data/repos/xRayPol/TM1_8 $(ROOTFLAG)
 
-CXX=gcc
-LD=g++
+CXX:=gcc -g
+LD:=g++
 
 OBJ=simpleTest.o trackFinder.o 
 HEADS=simpleTest.h trackFinder.h

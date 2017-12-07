@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <TError.h>
+#include <TPad.h>
 #include <TVector3.h>
 #include <TObject.h>
 #include "rootlibX.h"
@@ -242,7 +243,7 @@ void trackFinder::process(){
     if(!roi) continue;
 
     cout << i << " frame=" << roi->frame << " size=" << roi->hits.size() << endl;
-    for(int i=0; i<roi->hits.size(); i++) cout << "  ==> " << i << " A" << roi->hits[i]->A << " " << roi->hits[i]->pID << " width=" << roi->hits[i]->width << endl;
+//     for(int i=0; i<roi->hits.size(); i++) cout << "  ==> " << i << " A" << roi->hits[i]->A << " " << roi->hits[i]->pID << " width=" << roi->hits[i]->width << endl;
    }
 
   //// merge & split ROI in each frame
@@ -262,6 +263,36 @@ void trackFinder::process(){
 //        }
 //      }
 
+  /// merge ROIs -- if the leading edge appear in two frames
+  for(int i=0; i<ROIs.size()-1; i++){
+    ROI* roi = ROIs[i];
+    if(!roi) continue;
+
+    ROI* roiN = ROIs[i+1];
+    if(!roiN) continue;
+
+    roi->status = 0;
+    /// the closest distance is 1
+
+    int nClose = 0;
+    for(size_t j=0; j<roi->hits.size(); j++){
+      for(size_t k=0; k<roiN->hits.size(); k++){
+        if(roi->hits[j] && roiN->hits[k] && distance(roi->hits[j], roiN->hits[k])<1.5) nClose++;
+       }
+     }
+
+    ///merge the two if more than 5 hits are close -- further will need to ask them to be in same column?
+    if(nClose>5){
+      moveHits(roi->hits, roiN->hits);
+      roi->status = 1;
+
+      Info("merging frames", "frame %d with nClose=%d", roi->frame, nClose);
+      
+      delete roiN;
+      ROIs[i+1] = nullptr;
+     }
+   }
+
   //// save them
   TFile* f1 = new TFile("foutA1.root","recreate");
   TTree* tree1 = new TTree("physics", "physics data");
@@ -275,7 +306,7 @@ void trackFinder::process(){
 
     tm_ROI->clear();
     splitROI(roi, tm_ROI);
-    cout << i << " - write out vector size: " << tm_ROI->size() << endl;
+//     cout << i << " - write out vector size: " << tm_ROI->size() << endl;
 
     tree1->Fill();
    }
@@ -284,6 +315,18 @@ void trackFinder::process(){
 
   return;
 }
+
+void trackFinder::moveHits(vector< Hit* >& des, vector< Hit* >& source){
+  /// move all hits in source to des
+  for(int i=0; i<source.size(); i++){
+    if(!source[i]) continue;
+    des.push_back(source[i]);
+    source[i] = nullptr;
+   }
+
+  return;
+}
+
 
 void trackFinder::moveHits(vector< Hit* >& des, int is, vector< Hit* >& source){
   /// move the neibours of i in source to des
@@ -315,7 +358,7 @@ void trackFinder::splitROI(ROI* big_roi, vector< ROI >* out){
     for(int j=0; j<hits_o.size(); j++){if(hits_o[j] && hits_o[j]->A > maxC){seed=j; maxC=hits_o[j]->A;}}
     if(seed<0) break;
 
-    cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
+//     cout << "seed " << seed << " A=" << hits_o[seed]->A << endl;
     ROI roi_t;
     roi_t.frame = big_roi->frame;
 
@@ -323,7 +366,7 @@ void trackFinder::splitROI(ROI* big_roi, vector< ROI >* out){
     moveHits(roi_t.hits, seed, hits_o);
     out->push_back(roi_t);
    }
-  cout << "here: out size = " << out->size() << endl;
+//   cout << "here: out size = " << out->size() << endl;
 
   return;
 }
@@ -353,4 +396,46 @@ vector< ROI* >* trackFinder::splitROI( ROI* big_roi){
   return newV;
 }
 
+TPad* trackFinder::drawFrames(int fstart, int fN, int mode){
+  TPad* pad = new TPad();
+
+  //// setup pede
+  pd1Pede pede;
+  pede.setup(CF_inBkg);
+
+  char* fn = &CF_inData[0];
+  placData_1 pd1;
+  pd1.read(fn);
+  pd1.print();
+
+  int nCol = round(sqrt(fN));
+  int nRow = fN/nCol;
+  if (nCol*nRow < fN) nRow++;
+
+  /// setup plots
+  plot pt;
+  pt.setupCanvas(nRow,nCol,1200,600); //设置canvas上图片的行数，列数
+  pt.setup2D(nRow,nCol,72,72,"hist2d"); //Tcanvas中的图的行数，列数，阵列的行数，列数，图的名字
+
+  init_keyboard();
+  int ch=0;
+  int adc(0);
+
+  for(int ic=0; ic<fN; ic++){
+    pd1.getFrame(fstart+ic, adc);
+    pede.subPede(pd1.frameDat, adc);  //subtract pede 不加第二个参数，会操作所有通道的数据
+    pede.getSignificance(pd1.frameDat, adc); 
+    pt.loadData2Hist2D(pd1.frameDat,ic);
+
+    char str[20];
+    sprintf(str, "frame %d", fstart+ic);
+    pt.h2[ic]->SetTitle(str);
+   }
+  pt.draw2D();
+//   pt.c->SaveAs("signal_example.eps");
+//   pt.c->SaveAs("signal_example.png");
+//   ch=readch();
+
+  return pad;
+}
 

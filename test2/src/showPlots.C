@@ -7,7 +7,7 @@ using namespace std;
 
 int showPlots()
 {
-  gSystem->Load("recoTest.so");
+  gSystem->Load("libTest.so");
   cout << "testing" << endl;
 
   TChain ch("physics");
@@ -22,7 +22,7 @@ int showPlots()
     ch.GetEntry(t);
     cout << x->size() << endl;
     for(size_t i=0; i<x->size(); i++){
-      cout << i << " frame:" << x->at(i).frame << endl;
+      cout << i << " frame:" << x->at(i).frame << " " << x->at(i).m_hitsI.size() << endl;
      }
    }
 

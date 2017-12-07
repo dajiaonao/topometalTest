@@ -15,6 +15,7 @@ def test():
 def checkData():
     if len(sys.argv)<2:
         print "need to give file name"
+        return
     filelist = sys.argv[1]
 
     tf1 = trackFinder()
@@ -26,5 +27,8 @@ def checkData():
             tf1.process()
 
 if __name__ == '__main__':
-    checkData()
+    if len(sys.argv)>1:
+        checkData()
+    else:
+        test()
 #     test()
