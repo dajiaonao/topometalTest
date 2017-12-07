@@ -1,0 +1,34 @@
+ROOTLIBS := $(shell root-config --glibs)
+ROOTFLAG := $(shell root-config --cflags)
+CXXFLAGS := -I/data/repos/xRayPol/TM1_8 $(ROOTFLAG)
+
+CXX=gcc
+LD=g++
+
+OBJ=simpleTest.o trackFinder.o 
+HEADS=simpleTest.h trackFinder.h
+
+lib: libTest.so
+
+main: main.exe
+	echo "Done"
+
+%.exe: %.o $(OBJ) testDict.o
+	$(LD) $(ROOTLIBS) $^ -o $@
+
+libTest.so: $(OBJ) testDict.o
+	$(LD) $(ROOTLIBS) $^ -shared -o $@
+
+%.o: %.cpp
+	$(CXX) -fPIC $(CXXFLAGS) -c $< -o $@
+
+%Dict.cpp: $(HEADS) Linkdef.h
+	rootcint -f $@ -c $(CXXFLAGS) -p $^
+
+clean:
+	-rm *.o
+cleanall: clean
+	-rm *.exe
+	-rm *.so
+	-rm testDict*
+

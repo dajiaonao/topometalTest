@@ -1,6 +1,6 @@
 ROOTLIBS := $(shell root-config --glibs)
 ROOTFLAG := $(shell root-config --cflags)
-CXXFLAG := -I/home/dzhang/work/topmetal2M/TM1_8 $(ROOTFLAG)
+CXXFLAG := -fPIC -I/data/repos/xRayPol/TM1_8/ $(ROOTFLAG)
 CXX := gcc
 LD := g++
 
@@ -14,7 +14,7 @@ run_pd1ToRoot.exe: pd1ToRoot.cpp
 run_get_width.exe: get_width.cpp
 
 lib: recoTest.so
-recoTest.so: ObjectsDict.o Objects.h trackFinder.o
+recoTest.so: ObjectsDict.o trackFinder.o Objects.h
 	$(LD) -shared -o $@ $(CXXFLAG) $(ROOTLIBS) $^
 
 run_%.exe: %.cpp
@@ -30,7 +30,7 @@ tf_test.exe: trackFinder.o Objects.h ObjectsDict.o
 	gcc -c $^ -o $@ $(CXXFLAG)
 
 ObjectsDict.cpp: Objects.h LinkDef.h
-	rootcint -f $@ -c -p $^
+	rootcint -f $@ -c $(CXXFLAG) -p $^
 
 
 clean:
