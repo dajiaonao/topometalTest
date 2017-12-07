@@ -5,6 +5,7 @@
 #include <cmath>
 #include <TError.h>
 #include <TVector3.h>
+#include <TObject.h>
 #include "rootlibX.h"
 
 using namespace std;
@@ -27,7 +28,7 @@ struct Track{
   map< float, ROI > Rois; /// a list of ROIs <time, ROI>
 };
 
-class trackFinder{
+class trackFinder:public TObject{
  public:
   trackFinder():meanPed(nullptr),rmsPed(nullptr){};
 
@@ -77,8 +78,8 @@ class trackFinder{
    }
 
   void process(){
-    CF_inData = "/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/out386.pd1";
-    CF_inBkg = "/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/pede22.txt";
+    CF_inBkg = "/data/Samples/xRayPol/topmetal1202/pede27.txt";
+    CF_inData = "/data/Samples/xRayPol/20171107/out136.pd1";
     /// setup data
     char* fn = &CF_inData[0];
     placData_1 pd1;
@@ -234,6 +235,8 @@ class trackFinder{
   string CF_inBkg;
   float* meanPed;
   float* rmsPed;
+
+  ClassDef(trackFinder, 1)
 };
 
 int recoTest(){

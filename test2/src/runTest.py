@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys
+import sys,os
 from ROOT import *
 gSystem.Load('libTest.so')
 
@@ -17,13 +17,17 @@ def checkData():
         print "need to give file name"
         return
     filelist = sys.argv[1]
+    figDir = 'figs'
 
+    if figDir!='' and figDir[-1]!='/': figDir+='/'
     tf1 = trackFinder()
     tf1.CF_inBkg = "/data/Samples/xRayPol/topmetal1202/pede27.txt";
 
     with open(filelist,'r') as f1:
         for line in f1.readlines():
             tf1.CF_inData = line.rstrip()
+            tf1.CF_saveTag = figDir+(lambda x: x[:x.find('.')])(os.path.basename(tf1.CF_inData))
+            print tf1.CF_saveTag
             tf1.process()
 
 if __name__ == '__main__':

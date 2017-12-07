@@ -29,6 +29,12 @@ class ROI: public TObject{
     this->hits = r.hits;
    }
   ~ROI(){};
+  float ADC(){
+    if(!hits) return -1;
+    float a(0);
+    for(auto i:m_hitsI){a+=(*hits)[i].A;}
+    return a;
+   }
 
   int frame;
   int status = 0;

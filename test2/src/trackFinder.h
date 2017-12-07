@@ -65,6 +65,8 @@ class trackFinder:public TObject{
   float* rmsPed;
   TPad* m_tpad=nullptr;
   TLatex* m_lt=nullptr;
+  std::string CF_saveTag = "test";
+  int CF_mode = 1;
 
   ClassDef(trackFinder, 1)
 };

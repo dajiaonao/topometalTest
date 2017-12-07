@@ -9,26 +9,29 @@
 #include <TCanvas.h>
 #include <TSystem.h>
 #include "rootlibX.h"
+#include <fstream>
 // #include <io.h>
 
 int main(int argc, char **argv){
 //   int pedeSet = atol(argv[1]);
 //   int dataSet = atol(argv[2]);
-  int pedeSet = 22;
-  int dataSet = 386;
+  int pedeSet = 27;
+  int dataSet = 136;
 
   //// setup pede
   pd1Pede pede;
   if(pedeSet>=0){
     char pedeFn[200];
-    sprintf(pedeFn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/pede%d.txt",pedeSet);
+//     sprintf(pedeFn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/pede%d.txt",pedeSet);
+    sprintf(pedeFn,"/data/Samples/xRayPol/topmetal1202/pede%d.txt",pedeSet);
     pede.setup(pedeFn);
    }
 
   /// setup data
   placData_1 pd1;
   char fn[200];
-  sprintf(fn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/out%d.pd1",dataSet);
+//   sprintf(fn,"/home/dzhang/work/topmetal2M/Samples/Nov03_Guangxi/out%d.pd1",dataSet);
+  sprintf(fn,"/data/Samples/xRayPol/20171107/out%d.pd1",dataSet);
   pd1.read(fn);
   pd1.print();
 
@@ -46,8 +49,8 @@ int main(int argc, char **argv){
 
 //   pt.draw2DFrames(748, 756);
 //   pt.setup2DMinMax(-4,10);
-  int fm1 = 510;
-  int fm2 = 755;
+  int fm1 = 170;
+  int fm2 = -1;
   int nC = pt.nCol*pt.nRow;
   for(int ic=0; ic<nC; ic++){
     pd1.getFrame(fm1+ic, adc);
@@ -63,6 +66,18 @@ int main(int argc, char **argv){
   pt.c->SaveAs("signal_example.eps");
   pt.c->SaveAs("signal_example.png");
   ch=readch();
+
+  /// dump numbers from histograms
+  ofstream fout("test1.out"); 
+  for(int i=0; i<pt.nCol*pt.nRow; i++){
+    if(!pt.h2[i]) continue;
+    fout << "# frame " << pt.h2[i]->GetTitle() << endl;
+    for(int iCol=0; iCol<72; iCol++)
+      for(int iRow=0; iRow<72; iRow++){
+        fout << iCol << " " << iRow << " " << pt.h2[i]->GetBinContent(iCol+1, iRow+1) << endl;
+     }
+   }
+  fout.close();
 
 //   return;
 

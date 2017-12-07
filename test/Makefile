@@ -19,6 +19,8 @@ recoTest.so: ObjectsDict.o trackFinder.o Objects.h
 
 run_%.exe: %.cpp
 	g++ -o $@ $^ $(CXXFLAG) $(ROOTLIBS)
+lib: recoTest.cpp
+	g++ -fPIC $^ $(CXXFLAG) $(ROOTLIBS) -shared -o libRecoTest.so
 
 testC: testC.cpp Objects.h ObjectsDict.o
 	g++ -o $@ $^ $(CXXFLAG) $(ROOTLIBS)
